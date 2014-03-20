@@ -255,21 +255,57 @@ public class TTPService {
 
 				newGram.setFrag(false);
 			}
-
-			newGram.setChecksum((short) makeChecksum(newGram));
+			
+			Object d = newGram.getData();
+			newGram.setChecksum((short) makeChecksum(d));
 
 			readyList.add(newGram);
 		}
 	}
 
 	/**
-	 * makeChecksum calculate the checksum of the head of the gram
+	 * makeChecksum calculate the checksum of the data
 	 * 
-	 * @param datagram
-	 * @return
+	 * @param Object data
 	 */
-	private short makeChecksum(Datagram datagram) {
-		return 0;
+	private short makeChecksum(Object d) {
+		short checksum = 0;
+		String data = d.toString();
+		byte[] dataBytes = data.getBytes();
+		
+		for (int i = 0; i < dataBytes.length; i++) {
+			checksum += (short) dataBytes[i];
+		}
+		while ( checksum / 0xff != 0) {
+			checksum = (short) (checksum & 0xff + checksum >> 8);
+		}
+		checksum = (short) ~checksum;
+		
+		return checksum;
+	}
+	
+	/**
+	 * validateChecksum validate the checksum of the received data
+	 * 
+	 * @param Object d, short checksum
+	 */
+	public boolean validateChecksum(Object d, short checksum) {
+		short newChecksum = 0;
+		String data = d.toString();
+		byte[] dataBytes = data.getBytes();
+		
+		for (int i = 0; i < dataBytes.length; i++) {
+			newChecksum += (short) dataBytes[i];
+		}
+		while ( newChecksum / 0xff != 0) {
+			newChecksum = (short) (newChecksum & 0xff + newChecksum >> 8);
+		}
+		
+		if ((newChecksum & 0xff) + (checksum & 0xff) == 0xff) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/**
@@ -287,22 +323,22 @@ public class TTPService {
 			// receive the datagrams and check checksum first
 			Datagram gram = datagramService.receiveDatagram();
 			System.out.println(gram.getData());
-			short checksum = makeChecksum(gram);
-			if (checksum == gram.getChecksum()) {
-				// if this is the first gram, add it directly
-				if (receivedList.isEmpty()) {
-					receivedList.add(gram);
-					lastAck = gram.getSeq() + gram.getSize();
-				} else if (gram.getSeq() == lastAck) { // if this is not the
-														// first one, the only
-														// condition it can be
-														// added to the list is
-														// the equation of seq
-														// and the expected ack
-					receivedList.add(gram);
-					lastAck = gram.getSeq() + gram.getSize();
-				}
+			short checksum = gram.getChecksum();
+			if (!validateChecksum(gram.getData(), checksum)) {
+				return null;
 			}
+			
+			// if this is the first gram, add it directly
+			if (receivedList.isEmpty()) {
+				receivedList.add(gram);
+				lastAck = gram.getSeq() + gram.getSize();
+			} else if (gram.getSeq() == lastAck) {  // if this is not the first one, the only
+													// condition it can be added to the list is
+													// the equation of seq and the expected ack
+				receivedList.add(gram);
+				lastAck = gram.getSeq() + gram.getSize();
+			}
+			
 
 			// build a return gram and fill the Ack field
 			Datagram returnGram = new Datagram();
