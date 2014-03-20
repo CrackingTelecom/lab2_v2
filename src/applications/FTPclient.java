@@ -1,5 +1,7 @@
 package applications;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.SocketException;
 
@@ -21,13 +23,20 @@ public class FTPclient {
 			short desPort = 8060;
 
 
-			Object data = "/test.txt";
+			Object data = "test.txt";
 			
 			ttp.connect(srcIP, desIP, srcPort, desPort);
 			ttp.send(data);
 			Object file = ttp.receive();
 			
-			System.out.println("receive " + file);
+			System.out.println("received from server: " + file);
+			
+			File localFile = new File("received.txt");
+	        if(!localFile.exists())
+	        	 localFile.createNewFile();
+	        FileOutputStream out=new FileOutputStream(localFile);
+	        out.write(file.toString().getBytes());
+	        out.close();
 			
 			ttp.close();
 

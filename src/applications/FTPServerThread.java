@@ -1,5 +1,7 @@
 package applications;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 
 import services.TTPService;
@@ -38,9 +40,19 @@ public class FTPServerThread implements Runnable{
 		} 
 	}
 	
-	public Object getFile(String path)
+	public Object getFile(String path) throws IOException
 	{
-		return "got it";
+		//System.out.println(path);
+		FileReader read = new FileReader(path);
+		BufferedReader br = new BufferedReader(read);
+	    String row;
+	    String content = "";
+	    while((row = br.readLine())!=null){
+	    	content += row;
+	    	System.out.println(row);
+	    }
+		   
+		return content;
 	}
 
 }
