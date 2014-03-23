@@ -24,8 +24,6 @@ public class TTPService {
 	int windowSize;
 	int currentSize = 0;
 	int timeout;
-	
-	
 
 	/*
 	 * sender's data structure
@@ -41,7 +39,6 @@ public class TTPService {
 	HashMap<Integer, Datagram> map = new HashMap<Integer, Datagram>();
 	HashMap<Integer, Integer> timeMap = new HashMap<Integer, Integer>();
 	
-
 	Thread sendThread;
 	Thread receiveThread;
 
@@ -51,14 +48,12 @@ public class TTPService {
 	LinkedList<Datagram> receivedList = new LinkedList<Datagram>();
 
 	public TTPService(short port, int windowSize, int timeout) throws SocketException {
-		
 		datagramService = new DatagramService(port,0);
 		this.windowSize = windowSize;
 		this.timeout = timeout;
 	}
 
 	/**
-	 * 
 	 * @param datagram
 	 * @throws IOException
 	 * 
@@ -70,7 +65,6 @@ public class TTPService {
 	 *             gram should be resent timeThread is for monitoring if any
 	 *             sent but not yes acked gram is timeout. If so, it resent the
 	 *             gram immediately
-	 * @throws InterruptedException 
 	 */
 	public void send(Object data) throws IOException {
 
@@ -83,12 +77,10 @@ public class TTPService {
 		sendThread.start();
 		receiveThread.start();
 		
-		
 		try {
 			sendThread.join();
 			receiveThread.join();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -120,11 +112,8 @@ public class TTPService {
 						Date date = new Date();
 						timeMap.put(ack, (int) date.getTime());
 					}
-
 				}
-
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -178,10 +167,8 @@ public class TTPService {
 				}
 
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -209,9 +196,8 @@ public class TTPService {
 						}
 					}
 				} catch (Exception e) {
-
+					e.printStackTrace();
 				}
-
 			}
 		};
 		timer.schedule(task, 0, 500);
@@ -222,7 +208,7 @@ public class TTPService {
 	 * the max size of the payload. It uses seq to indicate the order of the
 	 * grams and use frag to indicate the end gram
 	 * 
-	 * @param datagram
+	 * @param Object
 	 */
 	private void partition(Object data) {
 		String str = data.toString();
@@ -264,7 +250,7 @@ public class TTPService {
 	}
 
 	/**
-	 * makeChecksum calculate the checksum of the data
+	 * makeChecksum, calculate the checksum of the data
 	 * 
 	 * @param Object data
 	 */
@@ -285,7 +271,7 @@ public class TTPService {
 	}
 	
 	/**
-	 * validateChecksum validate the checksum of the received data
+	 * validateChecksum, validate the checksum of the received data
 	 * 
 	 * @param Object d, short checksum
 	 */
@@ -312,7 +298,7 @@ public class TTPService {
 	 * receive function is for receiving grams and send acks according to
 	 * GoBackN. It is used in receiver side.
 	 * 
-	 * @return
+	 * @return Object
 	 * @throws IOException
 	 * @throws ClassNotFoundException
 	 */
@@ -369,7 +355,7 @@ public class TTPService {
 	 * because the list is ordered by seq, we can just add them one by one
 	 * 
 	 * @param list
-	 * @return
+	 * @return Datagram
 	 */
 	public Datagram reassemble(LinkedList<Datagram> list) {
 
