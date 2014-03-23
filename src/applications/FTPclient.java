@@ -39,13 +39,14 @@ public class FTPclient {
 			ttp.send(data);
 			Object file = ttp.receive();
 			
-			File localFile = new File(filename);
-	        if(!localFile.exists())
+			File localFile = new File("Received_" + filename);
+	        if(!localFile.exists()) {
 	        	 localFile.createNewFile();
+	        }
 	        FileOutputStream out = new FileOutputStream(localFile);
 	        out.write(file.toString().getBytes());
 	        out.close();
-			System.out.println("Received file from server, saved as: " + file);
+			System.out.println("Received file from server, saved as: " + filename);
 			
 			ttp.close();
 

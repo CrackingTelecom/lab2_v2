@@ -10,8 +10,6 @@ public class TTPgram {
 	
 	Datagram datagram;
 	
-	
-	
 	public TTPgram() {
 		datagram = new Datagram();
 		seqNum = 0;
@@ -27,16 +25,11 @@ public class TTPgram {
 		this.frag = frag;
 	}
 	
-	
-	
-	
-	public void setFrag(boolean b)
-	{
+	public void setFrag(boolean b) {
 		this.frag = b;
 	}
 	
-	public boolean getFrag()
-	{
+	public boolean getFrag() {
 		return this.frag;
 	}
 	public void setSeq(int seq) {

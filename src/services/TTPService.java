@@ -24,6 +24,7 @@ public class TTPService {
 	int windowSize;
 	int currentSize = 0;
 	int timeout;
+	int verbose = 1;
 
 	/*
 	 * sender's data structure
@@ -111,6 +112,10 @@ public class TTPService {
 
 						Date date = new Date();
 						timeMap.put(ack, (int) date.getTime());
+						
+						if (verbose > 0) {
+							System.out.println("sent datagram, sequenceNum: " + String.valueOf(gram.getSeq()));
+						}
 					}
 				}
 			} catch (IOException e) {
@@ -148,14 +153,25 @@ public class TTPService {
 						timeMap.remove(waitingAck);
 
 						currentSize--;
+						
+						if (verbose > 0) {
+							System.out.println("received datagram, sequenceNum: " + String.valueOf(gram.getSeq()));
+						}
 
 						if (gram.getFrag() == false)
 							break;
 					}
 
-					else if (gram.getAck() < waitingAck)
-						;
+					else if (gram.getAck() < waitingAck) {
+						if (verbose > 0) {
+							System.out.println("received duplicate datagram, sequenceNum: " + String.valueOf(gram.getSeq()));
+						}
+					}
+					
 					else {
+						if (verbose > 0) {
+							System.out.println("received unexpected datagram, sequenceNum: " + String.valueOf(gram.getSeq()));
+						}
 						for (int i = 0; i < sentList.size(); i++) {
 							datagramService.sendDatagram(sentList.get(i));
 							int waitingAck0 = sentList.get(i).getSeq()
@@ -192,6 +208,9 @@ public class TTPService {
 						int time = timeMap.get(ack);
 						if (date.getTime() > time + timeout) {
 							datagramService.sendDatagram(map.get(ack));
+							if (verbose > 0) {
+								System.out.println("timeout, resending datagram, sequenceNum: " + String.valueOf(map.get(ack).getSeq()));
+							}
 							timeMap.put(ack, (int) date.getTime());
 						}
 					}
@@ -200,7 +219,7 @@ public class TTPService {
 				}
 			}
 		};
-		timer.schedule(task, 0, 500);
+		timer.schedule(task, 0, timeout);
 	}
 
 	/**
@@ -250,6 +269,114 @@ public class TTPService {
 	}
 
 	/**
+	 * receive function is for receiving grams and send acks according to
+	 * GoBackN. It is used in receiver side.
+	 * 
+	 * @return Object
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 */
+	public Object receive() throws IOException, ClassNotFoundException {
+
+		int lastAck = 0;
+		while (true) {
+			/** receive the datagrams and check checksum first  **/
+			Datagram gram = datagramService.receiveDatagram();
+			
+			if (verbose > 0) {
+				System.out.println("received datagram, sequenceNum: " + String.valueOf(gram.getSeq()));
+			}
+			
+			short checksum = gram.getChecksum();
+			
+			if (!validateChecksum(gram.getData(), checksum)) {
+				System.out.println("Checksum error, datagram sequenceNum: " + String.valueOf(gram.getSeq()));
+				break;
+			}
+			
+			/** if this is the first gram, add it directly
+			 	if this is not the first one, the only condition it can be added to the list is
+			 	the equation of seq and the expected ack **/
+			if (receivedList.isEmpty() || gram.getSeq() == lastAck) {
+				receivedList.add(gram);
+				lastAck = gram.getSeq() + gram.getSize();
+			}
+			
+			/** build a return gram and fill the Ack field **/
+			Datagram returnGram = new Datagram();
+			returnGram.setSrcaddr(this.srcIP);
+			returnGram.setDstaddr(this.desIP);
+			returnGram.setSrcport(this.srcPort);
+			returnGram.setDstport(this.desPort);
+			returnGram.setAck(lastAck);
+			returnGram.setFrag(gram.getFrag());
+			returnGram.setChecksum(makeChecksum(returnGram));
+
+			datagramService.sendDatagram(returnGram);
+
+			/** if this gram is the last segment, break the loop **/
+			if (gram.getFrag() == false) {
+				break;
+			}
+		}
+
+		/** reassemble the grams in the list **/
+		Datagram datagram = reassemble(receivedList);
+		
+		return datagram.getData();
+	}
+
+	/**
+	 * reassemble is to assemble the partitioned grams into one final output
+	 * because the list is ordered by seq, we can just add them one by one
+	 * 
+	 * @param list
+	 * @return Datagram
+	 */
+	public Datagram reassemble(LinkedList<Datagram> list) {
+
+		Datagram assemble = new Datagram();
+		String string = "";
+		for (Datagram gram : list) {
+			Object data = gram.getData();
+			String str = data.toString();
+			string += str;
+		}
+
+		assemble.setData((Object) (string));
+
+		assemble.setSrcaddr(this.desIP);
+		assemble.setDstaddr(this.srcIP);
+		assemble.setSrcport(this.desPort);
+		assemble.setDstport(this.srcPort);
+		assemble.setChecksum(makeChecksum(assemble));
+
+		return assemble;
+	}
+
+	public void connect(String srcIP, String desIP, short srcPort, short desPort)
+			throws SocketException {
+		this.srcIP = srcIP;
+		this.desIP = desIP;
+		this.srcPort = srcPort;
+		this.desPort = desPort;
+	}
+	
+	public void accept() throws IOException, ClassNotFoundException {
+		Datagram datagram = datagramService.receiveDatagram();
+		this.srcIP = datagram.getDstaddr();
+		this.desIP = datagram.getSrcaddr();
+		this.srcPort = datagram.getDstport();
+		this.desPort = datagram.getSrcport();
+	}
+
+	public void close() {
+		sendThread.stop();
+		receiveThread.stop();
+	}
+	
+
+	/**
 	 * makeChecksum, calculate the checksum of the data
 	 * 
 	 * @param Object data
@@ -292,112 +419,6 @@ public class TTPService {
 		} else {
 			return false;
 		}
-	}
-
-	/**
-	 * receive function is for receiving grams and send acks according to
-	 * GoBackN. It is used in receiver side.
-	 * 
-	 * @return Object
-	 * @throws IOException
-	 * @throws ClassNotFoundException
-	 */
-	public Object receive() throws IOException, ClassNotFoundException {
-
-		int lastAck = 0;
-		while (true) {
-			// receive the datagrams and check checksum first
-			Datagram gram = datagramService.receiveDatagram();
-			System.out.println(gram.getData());
-			short checksum = gram.getChecksum();
-			if (!validateChecksum(gram.getData(), checksum)) {
-				return null;
-			}
-			
-			// if this is the first gram, add it directly
-			if (receivedList.isEmpty()) {
-				receivedList.add(gram);
-				lastAck = gram.getSeq() + gram.getSize();
-			} else if (gram.getSeq() == lastAck) {  // if this is not the first one, the only
-													// condition it can be added to the list is
-													// the equation of seq and the expected ack
-				receivedList.add(gram);
-				lastAck = gram.getSeq() + gram.getSize();
-			}
-			
-
-			// build a return gram and fill the Ack field
-			Datagram returnGram = new Datagram();
-			returnGram.setSrcaddr(this.srcIP);
-			returnGram.setDstaddr(this.desIP);
-			returnGram.setSrcport(this.srcPort);
-			returnGram.setDstport(this.desPort);
-			returnGram.setAck(lastAck);
-			returnGram.setFrag(gram.getFrag());
-			returnGram.setChecksum(makeChecksum(returnGram));
-
-			datagramService.sendDatagram(returnGram);
-
-			// if this gram is the last segment, break the loop
-			if (gram.getFrag() == false)
-				break;
-		}
-
-		// reassemble the grams in the list
-		Datagram datagram = reassemble(receivedList);
-		
-		return datagram.getData();
-
-	}
-
-	/**
-	 * reassemble is to assemble the partitioned grams into one final output
-	 * because the list is ordered by seq, we can just add them one by one
-	 * 
-	 * @param list
-	 * @return Datagram
-	 */
-	public Datagram reassemble(LinkedList<Datagram> list) {
-
-		Datagram assemble = new Datagram();
-		String string = "";
-		for (Datagram gram : list) {
-			Object data = gram.getData();
-			String str = data.toString();
-			string += str;
-		}
-
-		assemble.setData((Object) (string));
-
-		assemble.setSrcaddr(this.desIP);
-		assemble.setDstaddr(this.srcIP);
-		assemble.setSrcport(this.desPort);
-		assemble.setDstport(this.srcPort);
-		assemble.setChecksum(makeChecksum(assemble));
-
-		return assemble;
-	}
-
-	public void connect(String srcIP, String desIP, short srcPort, short desPort)
-			throws SocketException {
-		this.srcIP = srcIP;
-		this.desIP = desIP;
-		this.srcPort = srcPort;
-		this.desPort = desPort;
-	}
-	
-	public void accept() throws IOException, ClassNotFoundException
-	{
-		Datagram datagram = datagramService.receiveDatagram();
-		this.srcIP = datagram.getDstaddr();
-		this.desIP = datagram.getSrcaddr();
-		this.srcPort = datagram.getDstport();
-		this.desPort = datagram.getSrcport();
-	}
-
-	public void close() {
-		sendThread.stop();
-		receiveThread.stop();
 	}
 
 }

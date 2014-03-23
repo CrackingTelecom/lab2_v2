@@ -36,7 +36,6 @@ public class FTPServerThread implements Runnable{
 	    String content = "";
 	    while((row = br.readLine())!=null){
 	    	content += row;
-	    	System.out.println(row);
 	    }
 		   
 		return content;
