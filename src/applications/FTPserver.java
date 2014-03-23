@@ -7,16 +7,22 @@ import services.TTPService;
 public class FTPserver {
 
 	public static void main(String[] args) {
+		
+		if(args.length != 3) {
+			printUsage();
+		}
+		
+		short port = Short.parseShort(args[0]);
+		int window = Integer.parseInt(args[1]);
+		int timeout = Integer.parseInt(args[2]);
+		inputCheck(port, window, timeout);
 
+		System.out.println("Starting 740Ftp server...");
+		
 		try {
-			int window = 1000;
-			int timeout = 2000;
-			TTPService ttpService = new TTPService((short) 8060, window,
-					timeout);
-			System.out.println("Starting server...");
-
+			TTPService ttpService = new TTPService((short) port, window, timeout);
+			
 			while (true) {
-
 				System.out.println("waiting for connection...");
 
 				/*
@@ -35,14 +41,29 @@ public class FTPserver {
 				thread.join();
 			}
 		} catch (IOException e) {
-
+			e.printStackTrace();
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
 	}
+	
+	private static void printUsage() {
+		System.out.println("Usage: server <Port> <Sender/receiver window size> <Retransmission timer interval>");
+		System.exit(-1);
+	}
+	
+	private static void inputCheck(int port, int windowSizeN, int timeout) {
+		if (port > 65535 || port < 1024) {
+			System.err.println("Port number must be in between 1024 and 65535");
+			System.exit(1);
+		}
+		if (windowSizeN < 0) {
+			System.err.println("Window size must be larger than 0");
+			System.exit(1);
+		}
+	}
+
 }
