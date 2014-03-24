@@ -208,9 +208,6 @@ public class TTPService {
 						int time = timeMap.get(ack);
 						if (date.getTime() > time + timeout) {
 							datagramService.sendDatagram(map.get(ack));
-							if (verbose > 0) {
-								System.out.println("timeout, resending datagram, sequenceNum: " + String.valueOf(map.get(ack).getSeq()));
-							}
 							timeMap.put(ack, (int) date.getTime());
 						}
 					}
@@ -219,7 +216,7 @@ public class TTPService {
 				}
 			}
 		};
-		timer.schedule(task, 0, timeout);
+		timer.schedule(task, 0, 500);
 	}
 
 	/**

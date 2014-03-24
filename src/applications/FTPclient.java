@@ -46,7 +46,7 @@ public class FTPclient {
 	        FileOutputStream out = new FileOutputStream(localFile);
 	        out.write(file.toString().getBytes());
 	        out.close();
-			System.out.println("Received file from server, saved as: " + filename);
+			System.out.println("Received file from server, saved as: Received_" + filename);
 			
 			ttp.close();
 
